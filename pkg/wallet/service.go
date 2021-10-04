@@ -4,6 +4,9 @@ import (
 	"errors"
 	"github.com/delgoden/wallet/pkg/types"
 	"github.com/google/uuid"
+	"log"
+	"os"
+	"strconv"
 )
 
 type Service struct {
@@ -220,4 +223,28 @@ func (s *Service) FindFavoriteByID(favoriteID string) (*types.Favorite, error) {
 	}
 
 	return favorite, nil
+}
+
+// ExportToFile exports all accounts to a file
+func (s *Service) ExportToFile(path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			log.Print(err)
+		}
+	}()
+
+	for _, account := range s.accounts {
+		accStr := strconv.FormatInt(account.ID, 10) + ";" + string(account.Phone) + ";" + strconv.FormatInt(int64(account.Balance), 10) + "|"
+		_, err := file.Write([]byte(accStr))
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
 }
