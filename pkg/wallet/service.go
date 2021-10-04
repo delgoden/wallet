@@ -17,6 +17,7 @@ var (
 	ErrAmountMustBePositive = errors.New("amount must be greater than zero")
 	ErrAccountNotFound      = errors.New("account not found")
 	ErrNotEnoughBalance     = errors.New("not enough balance")
+	ErrPaymentNotFound      = errors.New("payment not found")
 )
 
 // RegisterAccount provides a method for adding new accounts
@@ -111,4 +112,39 @@ func (s *Service) FindAccountByID(accountID int64) (*types.Account, error) {
 	}
 
 	return account, nil
+}
+
+// FindPaymentByID search for a payment by ID
+func (s *Service) FindPaymentByID(paymentID string) (*types.Payment, error) {
+	var payment *types.Payment
+	for _, pay := range s.payments {
+		if pay.ID == paymentID {
+			payment = pay
+			break
+		}
+	}
+
+	if payment == nil {
+		return nil, ErrPaymentNotFound
+	}
+
+	return payment, nil
+}
+
+// Reject cancels the payment and returns the money to the balance
+func (s *Service) Reject(paymentID string) error {
+	payment, err := s.FindPaymentByID(paymentID)
+	if err != nil {
+		return err
+	}
+
+	payment.Status = types.PaymentStatusFail
+
+	account, err1 := s.FindAccountByID(payment.AccountID)
+	if err != nil {
+		return err1
+	}
+
+	account.Balance += payment.Amount
+	return nil
 }
