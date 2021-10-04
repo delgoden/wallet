@@ -10,6 +10,7 @@ type Service struct {
 	nextAccountID int64
 	accounts      []*types.Account
 	payments      []*types.Payment
+	favorites     []*types.Favorite
 }
 
 var (
@@ -18,6 +19,7 @@ var (
 	ErrAccountNotFound      = errors.New("account not found")
 	ErrNotEnoughBalance     = errors.New("not enough balance")
 	ErrPaymentNotFound      = errors.New("payment not found")
+	ErrFavoriteNotFound = errors.New("favorite not found")
 )
 
 // RegisterAccount provides a method for adding new accounts
@@ -162,4 +164,60 @@ func (s *Service) Repeat(paymentID string) (*types.Payment, error) {
 	}
 
 	return repeatPayment, nil
+}
+
+// FavoritePayment creates favorites from a specific payment
+func (s *Service) FavoritePayment(paymentID string, name string) (*types.Favorite, error) {
+	payment, err := s.FindPaymentByID(paymentID)
+	if err != nil {
+		return nil, err
+	}
+
+	favoriteID := uuid.New().String()
+	favorite := &types.Favorite{
+		ID:        favoriteID,
+		AccountID: payment.AccountID,
+		Name:      name,
+		Amount:    payment.Amount,
+		Category:  payment.Category,
+	}
+	s.favorites = append(s.favorites, favorite)
+
+	return favorite, nil
+}
+
+// PayFromFavorite makes a payment from a specific favorite
+func (s *Service) PayFromFavorite(favoriteID string) (*types.Payment, error) {
+	favorite, err := s.FindFavoriteByID(favoriteID)
+	if err != nil {
+		return nil, err
+	}
+
+	paymentID := uuid.New().String()
+	payment := &types.Payment{
+		ID:        paymentID,
+		AccountID: favorite.AccountID,
+		Amount:    favorite.Amount,
+		Category:  favorite.Category,
+		Status:    types.PaymentStatusInProgress,
+	}
+	s.payments = append(s.payments, payment)
+	return payment, nil
+}
+
+// FindFavoriteByID search gor an favorite by ID
+func (s *Service) FindFavoriteByID(favoriteID string) (*types.Favorite, error) {
+	var favorite *types.Favorite
+	for _, fvr := range s.favorites {
+		if fvr.ID == favoriteID {
+			favorite = fvr
+			break
+		}
+	}
+
+	if favorite == nil {
+		return nil, ErrFavoriteNotFound
+	}
+
+	return favorite, nil
 }
