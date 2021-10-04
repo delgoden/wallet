@@ -148,3 +148,18 @@ func (s *Service) Reject(paymentID string) error {
 	account.Balance += payment.Amount
 	return nil
 }
+
+// Repeat allows the ID to repeat the payment
+func (s *Service) Repeat(paymentID string) (*types.Payment, error) {
+	payment, err := s.FindPaymentByID(paymentID)
+	if err != nil {
+		return nil, err
+	}
+
+	repeatPayment, err := s.Pay(payment.AccountID, payment.Amount, payment.Category)
+	if err != nil {
+		return nil, err
+	}
+
+	return repeatPayment, nil
+}
