@@ -237,3 +237,111 @@ func Test_Repeat_fail(t *testing.T) {
 		return
 	}
 }
+
+func Test_FavoritePayment_succes(t *testing.T) {
+	s := newTestService()
+	_, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	payment := payments[0]
+	favorite, err := s.FavoritePayment(payment.ID, "new")
+	if err != nil {
+		t.Errorf("FavoritePayment(): error = %v", err)
+		return
+	}
+
+	if favorite.AccountID != payment.AccountID {
+		t.Errorf("FavoritePayment(): accounts do not match payment = %v, favorite = %v", payment.AccountID, favorite.AccountID)
+		return
+	}
+
+	if favorite.Amount != payment.Amount {
+		t.Errorf("FavoritePayment(): ammounts do not match payment = %v, favorite = %v", payment.Amount, favorite.Amount)
+		return
+	}
+
+	if favorite.Category != payment.Category {
+		t.Errorf("FavoritePayment(): categories do not match payment = %v, favorite = %v", payment.Category, favorite.Category)
+		return
+	}
+}
+
+func Test_FavoritePayment_fail(t *testing.T) {
+	s := newTestService()
+	_, _, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	paymentID := uuid.New().String()
+	_, err = s.FavoritePayment(paymentID, "new")
+	if err == nil {
+		t.Errorf("FavoritePayment(): error = %v", err)
+		return
+	}
+}
+
+func Test_PayFromFavorite_succes(t *testing.T) {
+	s := newTestService()
+	_, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	payment := payments[0]
+	favorite, err := s.FavoritePayment(payment.ID, "new")
+	if err != nil {
+		t.Errorf("FavoritePayment(): error = %v", err)
+		return
+	}
+
+	paymentNew, err := s.PayFromFavorite(favorite.ID)
+	if err != nil {
+		t.Errorf("PayFromFavorite(): error = %v", err)
+		return
+	}
+
+	if favorite.AccountID != paymentNew.AccountID {
+		t.Errorf("PayFromFavorite(): accounts do not match paymentNew = %v, favorite = %v", paymentNew.AccountID, favorite.AccountID)
+		return
+	}
+
+	if favorite.Amount != paymentNew.Amount {
+		t.Errorf("PayFromFavorite(): ammounts do not match paymentNew = %v, favorite = %v", paymentNew.Amount, favorite.Amount)
+		return
+	}
+
+	if favorite.Category != paymentNew.Category {
+		t.Errorf("PayFromFavorite(): categories do not match paymentNew = %v, favorite = %v", paymentNew.Category, favorite.Category)
+		return
+	}
+
+}
+
+func Test_PayFromFavorite_fail(t *testing.T) {
+	s := newTestService()
+	_, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	payment := payments[0]
+	_, err = s.FavoritePayment(payment.ID, "new")
+	if err != nil {
+		t.Errorf("FavoritePayment(): error = %v", err)
+		return
+	}
+
+	favoriteID := uuid.New().String()
+	_, err = s.PayFromFavorite(favoriteID)
+	if err == nil {
+		t.Errorf("FavoritePayment(): error = %v", err)
+		return
+	}
+}
