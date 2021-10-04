@@ -191,3 +191,49 @@ func Test_Reject_fail(t *testing.T) {
 	}
 
 }
+
+func Test_Repeat_succes(t *testing.T) {
+	s := newTestService()
+	_, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	payment := payments[0]
+	repeatPayment, err := s.Repeat(payment.ID)
+	if err != nil {
+		t.Errorf("Repeat(): error = %v", err)
+		return
+	}
+
+	if repeatPayment.AccountID != payment.AccountID {
+		t.Errorf("Repeat(): accounts do not match payment = %v, repeatPayment = %v", payment.AccountID, repeatPayment.AccountID)
+		return
+	}
+
+	if repeatPayment.Amount != payment.Amount {
+		t.Errorf("Repeat(): ammounts do not match payment = %v, repeatPayment = %v", payment.Amount, repeatPayment.Amount)
+		return
+	}
+
+	if repeatPayment.Category != payment.Category {
+		t.Errorf("Repeat(): categories do not match payment = %v, repeatPayment = %v", payment.Category, repeatPayment.Category)
+		return
+	}
+}
+
+func Test_Repeat_fail(t *testing.T) {
+	s := newTestService()
+	_, _, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	_, err = s.Repeat(uuid.New().String())
+	if err == nil {
+		t.Errorf("Repeat(): error = %v", err)
+		return
+	}
+}
