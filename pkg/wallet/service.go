@@ -1,12 +1,15 @@
 package wallet
 
 import (
+	"bufio"
 	"errors"
 	"github.com/delgoden/wallet/pkg/types"
 	"github.com/google/uuid"
+	"io"
 	"log"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Service struct {
@@ -246,5 +249,42 @@ func (s *Service) ExportToFile(path string) error {
 		}
 	}
 
+	return err
+}
+
+// ImportFromFile imports all accounts from a file
+func (s *Service) ImportFromFile(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			log.Print(err)
+		}
+	}()
+
+	reader := bufio.NewReader(file)
+
+	for {
+		accStr, err := reader.ReadString('|')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		accSls := strings.Split(accStr, ";")
+		ID, err := strconv.Atoi(accSls[0])
+		if err != nil {
+			return err
+		}
+		Balance, err := strconv.Atoi(strings.TrimSuffix(accSls[2], "|"))
+		if err != nil {
+			return err
+		}
+		s.accounts = append(s.accounts, &types.Account{ID: int64(ID), Phone: types.Phone(accSls[1]), Balance: types.Money(Balance)})
+	}
 	return err
 }
