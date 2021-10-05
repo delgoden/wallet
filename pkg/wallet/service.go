@@ -25,6 +25,7 @@ var (
 	ErrAccountNotFound      = errors.New("account not found")
 	ErrNotEnoughBalance     = errors.New("not enough balance")
 	ErrPaymentNotFound      = errors.New("payment not found")
+	ErrPaymentsNotFound = errors.New("payments not found")
 	ErrFavoriteNotFound = errors.New("favorite not found")
 )
 
@@ -211,7 +212,7 @@ func (s *Service) PayFromFavorite(favoriteID string) (*types.Payment, error) {
 	return payment, nil
 }
 
-// FindFavoriteByID search gor an favorite by ID
+// FindFavoriteByID search gor a favorite by ID
 func (s *Service) FindFavoriteByID(favoriteID string) (*types.Favorite, error) {
 	var favorite *types.Favorite
 	for _, fvr := range s.favorites {
@@ -289,7 +290,7 @@ func (s *Service) ImportFromFile(path string) error {
 	return err
 }
 
-// Export export of all accounts, payments and favorites to files
+// Export - export of all accounts, payments and favorites to files
 func (s *Service) Export(dir string) error {
 	err := os.MkdirAll(dir, 0777)
 	if err != nil {
@@ -366,7 +367,7 @@ func (s *Service) Export(dir string) error {
 	return nil
 }
 
-// Import import of all accounts, payments and favorites from files
+// Import - import of all accounts, payments and favorites from files
 func (s *Service) Import(dir string) error {
 	file, err := os.Open(dir + "/accounts.dump")
 	if err == nil || errors.Is(err, os.ErrExist) {
@@ -504,6 +505,97 @@ func (s *Service) Import(dir string) error {
 			log.Print(err)
 		}
 	}()
+
+	return nil
+}
+
+// ExportAccountHistory finds all payments for a specific account
+func (s *Service) ExportAccountHistory(accountID int64) ([]types.Payment, error) {
+	_, err := s.FindAccountByID(accountID)
+	if err != nil {
+		return nil, err
+	}
+	if len(s.payments) == 0 {
+		return nil, ErrPaymentsNotFound
+	}
+	var payments []types.Payment
+	for _, payment := range s.payments {
+		if payment.AccountID == accountID {
+			payments = append(payments, *payment)
+		}
+	}
+
+	return payments, nil
+}
+
+// HistoryToFiles saves all payments of a specific account to a file
+
+func (s *Service) HistoryToFiles(payments []types.Payment, dir string, records int) error {
+	if len(payments) == 0 {
+		return nil
+	}
+
+	if len(payments) <= records {
+		exportPayments(payments, dir+"/payments.dump")
+		return nil
+	}
+	var iterator int = 1
+	count := 0
+	for i := 1; i <= len(payments); i++ {
+		strIterator := strconv.Itoa(iterator)
+		fileName := dir + "/payments" + strIterator + ".dump"
+		if i == len(payments) && i-count != records {
+			exportPayments(payments[count:i], fileName)
+		}
+
+		if i-count == records {
+			exportPayments(payments[count:i], fileName)
+			count += records
+			iterator++
+		}
+	}
+	return nil
+}
+
+// exportPayments preparation of payments for export to file
+func exportPayments(payments []types.Payment, path string) {
+	pay := ""
+
+	for _, payment := range payments {
+
+		pay += payment.ID + ";"
+		pay += strconv.Itoa(int(payment.AccountID)) + ";"
+		pay += strconv.Itoa(int(payment.Amount)) + ";"
+		pay += string(payment.Category) + ";"
+		pay += string(payment.Status) + ";"
+		pay += "\n"
+	}
+	err := WriteDump(path, pay)
+	if err != nil {
+		log.Print(err)
+
+	}
+
+}
+
+// WriteDump recording prepared payments for export to a file
+func WriteDump(path, payRec string) error {
+	payFile, err := os.Create(path)
+	if err != nil {
+		log.Print(err)
+	}
+	defer func() {
+		if cerr := payFile.Close(); cerr != nil {
+			if err == nil {
+				log.Print(err)
+			}
+		}
+	}()
+
+	_, err = payFile.WriteString(payRec)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
