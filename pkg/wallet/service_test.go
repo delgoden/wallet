@@ -446,3 +446,39 @@ func BenchmarkFilterPayments(b *testing.B) {
 		b.StartTimer()
 	}
 }
+
+func BenchmarkSumPaymentsWithProgress(b *testing.B) {
+	s := newTestService()
+	account, _, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		b.Error(err)
+		return
+	}
+
+	for i := 0; i < 500_000; i++ {
+		_, err := s.Pay(account.ID, 1_000_00, "mobile")
+		if err != nil {
+			b.Error(err)
+		}
+
+	}
+	//want := types.Money()
+	want := types.Money(0)
+	for _, pay := range s.payments {
+		want += pay.Amount
+	}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ch := s.SumPaymentsWithProgress()
+		result := types.Money(0)
+		for res := range ch {
+			result += res.Result
+		}
+		b.StopTimer()
+		if !reflect.DeepEqual(result, want) {
+			b.Fatalf("invalid result got: %v; want: %v", result, want)
+		}
+		b.StartTimer()
+	}
+}
