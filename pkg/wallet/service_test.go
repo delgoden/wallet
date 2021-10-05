@@ -393,3 +393,32 @@ func TestImport(t *testing.T) {
 		return
 	}
 }
+
+func BenchmarkSumPayments(b *testing.B) {
+	s := newTestService()
+	account, _, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		b.Error(err)
+		return
+	}
+	for j := 0; j < 11; j++ {
+		_, err := s.Pay(account.ID, 1_000_00, "mobile")
+		if err != nil {
+			b.Errorf(("Pay(): wrong = %v"), err)
+		}
+	}
+	want := types.Money(0)
+	for _, pay := range s.payments {
+		want += pay.Amount
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result := s.SumPayments(2)
+		b.StopTimer()
+		if result != want {
+			b.Fatalf("invalid result got: %v; want: %v", result, want)
+		}
+		b.StartTimer()
+	}
+}
