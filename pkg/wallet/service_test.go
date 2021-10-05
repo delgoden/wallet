@@ -422,3 +422,27 @@ func BenchmarkSumPayments(b *testing.B) {
 		b.StartTimer()
 	}
 }
+
+func BenchmarkFilterPayments(b *testing.B) {
+	s := newTestService()
+	account, _, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		b.Error(err)
+		return
+	}
+
+	want := []types.Payment{}
+	for _, pay := range s.payments {
+		want = append(want, *pay)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result, _ := s.FilterPayments(account.ID, 3)
+
+		b.StopTimer()
+		if !reflect.DeepEqual(result, want) {
+			b.Fatalf("invalid result got: %v; want: %v", result, want)
+		}
+		b.StartTimer()
+	}
+}
