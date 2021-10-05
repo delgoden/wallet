@@ -708,3 +708,59 @@ func (s *Service) FilterPayments(accountID int64, goroutines int) ([]types.Payme
 	wg.Wait()
 	return payments, nil
 }
+
+// FilterPaymentsByFn filter payments using filter function
+func (s *Service) FilterPaymentsByFn(filter func(payment types.Payment) bool, goroutines int) ([]types.Payment, error) {
+	payments := []types.Payment{}
+
+	if goroutines == 0 || goroutines == 1 {
+		for _, payment := range s.payments {
+			if filter(*payment) {
+				payments = append(payments, *payment)
+			}
+		}
+		return payments, nil
+	}
+
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+	paymentsOnGoroutine := len(s.payments) / goroutines
+	count := 0
+	for i := 0; i < len(s.payments); i++ {
+		if i == len(s.payments)-1 {
+			wg.Add(1)
+			go func(count, i int) {
+				defer wg.Done()
+				tmp := []types.Payment{}
+				for _, payment := range s.payments[count:] {
+					if filter(*payment) {
+						tmp = append(tmp, *payment)
+					}
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				payments = append(payments, tmp...)
+			}(count, i)
+		}
+
+		if i-count == paymentsOnGoroutine {
+			wg.Add(1)
+			go func(count, i int) {
+				defer wg.Done()
+				tmp := []types.Payment{}
+				for _, payment := range s.payments[count:i] {
+					if filter(*payment) {
+						tmp = append(tmp, *payment)
+					}
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				payments = append(payments, tmp...)
+			}(count, i)
+			count += paymentsOnGoroutine
+		}
+	}
+	wg.Wait()
+
+	return payments, nil
+}
