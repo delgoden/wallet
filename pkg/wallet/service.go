@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type Service struct {
@@ -598,4 +599,53 @@ func WriteDump(path, payRec string) error {
 	}
 
 	return nil
+}
+
+// SumPayments summation of all payments in a competitive mode
+func (s *Service) SumPayments(goroutines int) types.Money {
+	result := types.Money(0)
+	if goroutines == 0 || goroutines == 1 {
+		for _, payment := range s.payments {
+			result += payment.Amount
+		}
+		return result
+	}
+
+	wg := sync.WaitGroup{}
+
+	mu := sync.Mutex{}
+	paymentsOnGoroutine := len(s.payments) / goroutines
+	count := 0
+	for i := 0; i < len(s.payments); i++ {
+		if i == len(s.payments)-1 {
+			wg.Add(1)
+			go func(count, i int) {
+				defer wg.Done()
+				tmp := types.Money(0)
+				for _, payment := range s.payments[count:] {
+					tmp += payment.Amount
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				result += tmp
+			}(count, i)
+		}
+
+		if i-count == paymentsOnGoroutine {
+			wg.Add(1)
+			go func(count, i int) {
+				defer wg.Done()
+				tmp := types.Money(0)
+				for _, payment := range s.payments[count:i] {
+					tmp += payment.Amount
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				result += tmp
+			}(count, i)
+			count += paymentsOnGoroutine
+		}
+	}
+	wg.Wait()
+	return result
 }
