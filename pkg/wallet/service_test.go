@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/delgoden/wallet/pkg/types"
 	"github.com/google/uuid"
+	"log"
 	"reflect"
 	"testing"
 )
@@ -342,6 +343,53 @@ func Test_PayFromFavorite_fail(t *testing.T) {
 	_, err = s.PayFromFavorite(favoriteID)
 	if err == nil {
 		t.Errorf("FavoritePayment(): error = %v", err)
+		return
+	}
+}
+
+func TestExport(t *testing.T) {
+	s := newTestService()
+	_, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	payment := payments[0]
+	_, err = s.FavoritePayment(payment.ID, "new")
+	if err != nil {
+		t.Errorf("FavoritePayment(): error = %v", err)
+		return
+	}
+
+	err = s.Export("02877c15-eda1-4d1e-879a-2f2083b8514f")
+
+	if err != nil {
+		log.Print(err)
+	}
+}
+
+func TestImport(t *testing.T) {
+	s := newTestService()
+	account, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	payment := payments[0]
+	_, err = s.FavoritePayment(payment.ID, "new")
+	if err != nil {
+		t.Errorf("FavoritePayment(): error = %v", err)
+		return
+	}
+
+	_ = s.Export("data")
+
+	err = s.Import("data")
+
+	if !reflect.DeepEqual(account, s.accounts[0]) {
+		t.Errorf(("ImportF(): wrong account returned = %v"), err)
 		return
 	}
 }

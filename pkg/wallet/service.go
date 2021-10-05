@@ -288,3 +288,222 @@ func (s *Service) ImportFromFile(path string) error {
 	}
 	return err
 }
+
+// Export export of all accounts, payments and favorites to files
+func (s *Service) Export(dir string) error {
+	err := os.MkdirAll(dir, 0777)
+	if err != nil {
+		panic(err)
+	}
+	if len(s.accounts) != 0 {
+		accFile, err := os.Create(dir + "/accounts.dump")
+		if err != nil {
+			log.Print(err)
+		}
+		defer func() {
+			if cerr := accFile.Close(); cerr != nil {
+				if err == nil {
+					log.Print(err)
+				}
+			}
+		}()
+
+		for _, account := range s.accounts {
+			accStr := strconv.FormatInt(account.ID, 10) + ";" + string(account.Phone) + ";" + strconv.FormatInt(int64(account.Balance), 10) + "\n"
+			_, err := accFile.Write([]byte(accStr))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(s.payments) != 0 {
+
+		payFile, err := os.Create(dir + "/payments.dump")
+		if err != nil {
+			log.Print(err)
+		}
+		defer func() {
+			if cerr := payFile.Close(); cerr != nil {
+				if err == nil {
+					log.Print(err)
+				}
+			}
+		}()
+
+		for _, payment := range s.payments {
+			payStr := payment.ID + ";" + strconv.FormatInt(payment.AccountID, 10) + ";" + strconv.FormatInt(int64(payment.Amount), 10) + ";" + string(payment.Category) + ";" + string(payment.Status) + "\n"
+			_, err := payFile.WriteString(payStr)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(s.favorites) != 0 {
+
+		favFile, err := os.Create(dir + "/favorites.dump")
+		if err != nil {
+			log.Print(err)
+		}
+		defer func() {
+			if cerr := favFile.Close(); cerr != nil {
+				if err == nil {
+					log.Print(err)
+				}
+			}
+		}()
+
+		for _, favorite := range s.favorites {
+			favStr := favorite.ID + ";" + strconv.FormatInt(favorite.AccountID, 10) + ";" + favorite.Name + ";" + strconv.FormatInt(int64(favorite.Amount), 10) + ";" + string(favorite.Category) + "\n"
+			_, err := favFile.WriteString(favStr)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// Import import of all accounts, payments and favorites from files
+func (s *Service) Import(dir string) error {
+	file, err := os.Open(dir + "/accounts.dump")
+	if err == nil || errors.Is(err, os.ErrExist) {
+		reader := bufio.NewReader(file)
+		for {
+			accStr, err := reader.ReadString('\n')
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return err
+			}
+			accSls := strings.Split(strings.TrimSuffix(accStr, "\n"), ";")
+			ID, err := strconv.Atoi(accSls[0])
+			if err != nil {
+				return err
+			}
+			Balance, err := strconv.Atoi(accSls[2])
+			if err != nil {
+				return err
+			}
+			_, err = s.FindAccountByID(int64(ID))
+			if err != nil {
+				account := &types.Account{
+					ID:      int64(ID),
+					Phone:   types.Phone(accSls[1]),
+					Balance: types.Money(Balance),
+				}
+				s.accounts = append(s.accounts, account)
+				s.nextAccountID = int64(ID)
+			}
+
+		}
+	} else {
+		log.Print(err)
+	}
+
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			log.Print(err)
+		}
+	}()
+
+	payFile, err := os.Open(dir + "/payments.dump")
+	if err == nil || errors.Is(err, os.ErrExist) {
+		reader := bufio.NewReader(payFile)
+		for {
+			payStr, err := reader.ReadString('\n')
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return err
+			}
+			paySls := strings.Split(strings.TrimSuffix(payStr, "\n"), ";")
+			payID := paySls[0]
+			if err != nil {
+				return err
+			}
+			AccountID, err := strconv.Atoi(paySls[1])
+			if err != nil {
+				return err
+			}
+			Amount, err := strconv.Atoi(paySls[2])
+			if err != nil {
+				return err
+			}
+			_, err = s.FindPaymentByID(payID)
+			if err != nil {
+				payment := &types.Payment{
+					ID:        payID,
+					AccountID: int64(AccountID),
+					Amount:    types.Money(Amount),
+					Category:  types.PaymentCategory(paySls[3]),
+					Status:    types.PaymentStatus(paySls[4]),
+				}
+				s.payments = append(s.payments, payment)
+			}
+		}
+	} else {
+		log.Print(err)
+	}
+
+	defer func() {
+		err := payFile.Close()
+		if err != nil {
+			log.Print(err)
+		}
+	}()
+
+	favFile, err := os.Open(dir + "/favorites.dump")
+	if err == nil || errors.Is(err, os.ErrExist) {
+		reader := bufio.NewReader(favFile)
+		for {
+			favStr, err := reader.ReadString('\n')
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return err
+			}
+			favSls := strings.Split(strings.TrimSuffix(favStr, "\n"), ";")
+			favID := favSls[0]
+			if err != nil {
+				return err
+			}
+			AccountID, err := strconv.Atoi(favSls[1])
+			if err != nil {
+				return err
+			}
+			Amount, err := strconv.Atoi(favSls[3])
+			if err != nil {
+				return err
+			}
+			_, err = s.FindFavoriteByID(favID)
+			if err != nil {
+				favorite := &types.Favorite{
+					ID:        favID,
+					AccountID: int64(AccountID),
+					Name:      favSls[2],
+					Amount:    types.Money(Amount),
+					Category:  types.PaymentCategory(favSls[4]),
+				}
+				s.favorites = append(s.favorites, favorite)
+			}
+		}
+	} else {
+		log.Print(err)
+	}
+
+	defer func() {
+		err := favFile.Close()
+		if err != nil {
+			log.Print(err)
+		}
+	}()
+
+	return nil
+}
