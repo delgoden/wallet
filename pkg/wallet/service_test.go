@@ -193,7 +193,7 @@ func Test_Reject_fail(t *testing.T) {
 
 }
 
-func Test_Repeat_succes(t *testing.T) {
+func Test_Repeat_success(t *testing.T) {
 	s := newTestService()
 	_, payments, err := s.addAccount(defaultTestAccount)
 	if err != nil {
@@ -239,7 +239,7 @@ func Test_Repeat_fail(t *testing.T) {
 	}
 }
 
-func Test_FavoritePayment_succes(t *testing.T) {
+func Test_FavoritePayment_success(t *testing.T) {
 	s := newTestService()
 	_, payments, err := s.addAccount(defaultTestAccount)
 	if err != nil {
@@ -286,7 +286,7 @@ func Test_FavoritePayment_fail(t *testing.T) {
 	}
 }
 
-func Test_PayFromFavorite_succes(t *testing.T) {
+func Test_PayFromFavorite_success(t *testing.T) {
 	s := newTestService()
 	_, payments, err := s.addAccount(defaultTestAccount)
 	if err != nil {
@@ -389,7 +389,7 @@ func TestImport(t *testing.T) {
 	err = s.Import("data")
 
 	if !reflect.DeepEqual(account, s.accounts[0]) {
-		t.Errorf(("ImportF(): wrong account returned = %v"), err)
+		t.Errorf("ImportF(): wrong account returned = %v", err)
 		return
 	}
 }
